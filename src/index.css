@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: #E0E0E0;
+  background-color: #121212;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-aqua text-background font-semibold py-2 px-4 rounded-md hover:bg-opacity-80 transition-all;
+  }
+  
+  .btn-secondary {
+    @apply bg-pink text-background font-semibold py-2 px-4 rounded-md hover:bg-opacity-80 transition-all;
+  }
+  
+  .card {
+    @apply bg-card rounded-lg p-6 shadow-lg;
+  }
+}
+
+/* Add these styles to your CSS file */
+.ql-editor {
+  min-height: 200px;
+  color: #e0e0e0;
+}
+
+.ql-toolbar {
+  background-color: #2a2a2a;
+  border-color: #444 !important;
+  color: #e0e0e0;
+}
+
+.ql-toolbar button,
+.ql-toolbar .ql-picker {
+  color: #e0e0e0 !important;
+}
+
+.ql-toolbar button:hover,
+.ql-toolbar button.ql-active,
+.ql-toolbar .ql-picker-label:hover,
+.ql-toolbar .ql-picker-label.ql-active {
+  color: #00FFD1 !important;
+}
+
+.ql-toolbar .ql-stroke {
+  stroke: #e0e0e0 !important;
+}
+
+.ql-toolbar button:hover .ql-stroke,
+.ql-toolbar button.ql-active .ql-stroke {
+  stroke: #00FFD1 !important;
+}
+
+.ql-toolbar .ql-fill {
+  fill: #e0e0e0 !important;
+}
+
+.ql-toolbar button:hover .ql-fill,
+.ql-toolbar button.ql-active .ql-fill {
+  fill: #00FFD1 !important;
+}
+
+.ql-container {
+  border-color: #444 !important;
+  background-color: #1a1a1a;
+}
+
+.ql-picker-options {
+  background-color: #2a2a2a !important;
+  border-color: #444 !important;
+}
+
+.ql-picker-item {
+  color: #e0e0e0 !important;
+}
+
+.ql-picker-item:hover {
+  color: #00FFD1 !important;
+}
