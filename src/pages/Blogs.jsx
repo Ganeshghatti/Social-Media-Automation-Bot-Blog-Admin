@@ -9,7 +9,7 @@ import "react-quill/dist/quill.snow.css";
 import axios from "axios";
 
 // Blog Modal Component for Create/Edit
-const BlogModal = ({ isOpen, onClose, categories }) => {
+const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -24,6 +24,23 @@ const BlogModal = ({ isOpen, onClose, categories }) => {
   const [coverFile, setCoverFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
+
+  // Initialize form with existing blog data if editing
+  useEffect(() => {
+    if (blogToEdit) {
+      setFormData({
+        title: blogToEdit.title || "",
+        description: blogToEdit.description || "",
+        content: blogToEdit.content || "",
+        status: blogToEdit.status || "private",
+        categories: blogToEdit.categories || [],
+        thumbnailImageAlt: blogToEdit.thumbnailImageAlt || "",
+        coverImageAlt: blogToEdit.coverImageAlt || "",
+      });
+      setSelectedCategories(blogToEdit.categories?.map(cat => 
+        typeof cat === 'object' ? cat._id : cat) || []);
+    }
+  }, [blogToEdit]);
 
   const resetForm = () => {
     setFormData({
@@ -71,116 +88,127 @@ const BlogModal = ({ isOpen, onClose, categories }) => {
     });
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim()) {
       toast.error("Title is required");
       return;
     }
-    
+
     if (!formData.description.trim()) {
       toast.error("Description is required");
       return;
     }
-    
+
     if (!formData.content.trim()) {
       toast.error("Content is required");
       return;
     }
 
-    if (!thumbnailFile) {
+    if (!blogToEdit && !thumbnailFile) {
       toast.error("Thumbnail image is required");
       return;
     }
 
-    if (!coverFile) {
+    if (!blogToEdit && !coverFile) {
       toast.error("Cover image is required");
       return;
     }
-    
+
     setSubmitting(true);
-    
+
     try {
-      // Step 1: Get presigned URLs
-      const presignedResponse = await apiClient.get("/blog/presigned-url?mode=create");
-      
-      if (!presignedResponse.data.success) {
-        throw new Error(presignedResponse.data.message || "Failed to get upload URLs");
-      }
-      
-      const presignedData = presignedResponse.data.data;
-      const blogId = presignedData.blogId;
-      
-      // Step 2: Upload images to S3 if files are selected
-      let thumbnailUrl = "";
-      let coverUrl = "";
-      
-      console.log(presignedResponse, presignedData, thumbnailFile, coverFile);
-      if (thumbnailFile) {
-        // Use fetch for direct binary upload
-        console.log(presignedData.thumbnailImage.presignedUrl);
-        const uploadResponse = await fetch(
-          presignedData.thumbnailImage.presignedUrl,
-          {
-            method: "PUT",
-            body: thumbnailFile,
-            headers: {
-              "Content-Type": thumbnailFile.type,
-            },
-          }
-        );
-        console.log(uploadResponse);
+      let thumbnailUrl = blogToEdit?.thumbnailImage || "";
+      let coverUrl = blogToEdit?.coverImage || "";
 
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload thumbnail image");
+      // Handle image uploads if changed
+      if (thumbnailFile || coverFile) {
+        let presignedUrl = `/blog/presigned-url?mode=${blogToEdit ? 'edit' : 'create'}`;
+        if (blogToEdit) {
+          presignedUrl += `&blogId=${blogToEdit._id}`;
+          if (thumbnailFile && !coverFile) {
+            presignedUrl += "&imageType=Thumbnail";
+          } else if (!thumbnailFile && coverFile) {
+            presignedUrl += "&imageType=CoverImage";
+          } else if (thumbnailFile && coverFile) {
+            presignedUrl += "&imageType=both";
+          }
         }
 
-        thumbnailUrl = presignedData.thumbnailImage.s3Url;
-      }
-      
-      if (coverFile) {
-        // Use fetch for direct binary upload
-        console.log(presignedData.coverImage.presignedUrl);
-        const uploadResponse = await fetch(
-          presignedData.coverImage.presignedUrl,
-          {
-            method: "PUT",
-            body: coverFile,
-            headers: {
-              "Content-Type": coverFile.type,
-            },
-          }
-        );
-        console.log(uploadResponse);
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload cover image");
+        // Step 1: Get presigned URLs
+        const presignedResponse = await apiClient.get(presignedUrl);
+        if (!presignedResponse.data.success) {
+          throw new Error(presignedResponse.data.message || "Failed to get upload URLs");
         }
 
-        coverUrl = presignedData.coverImage.s3Url;
+        const presignedData = presignedResponse.data.data;
+        console.log("Presigned URL Response:", presignedResponse.data);
+
+        // Step 2: Upload images to S3 if files are selected
+        if (thumbnailFile) {
+          // Convert the File object to a Blob
+          const thumbnailBlob = await fetch(URL.createObjectURL(thumbnailFile)).then((r) => r.blob());
+          const uploadResult = await axios.put(
+            presignedData.thumbnailImage.presignedUrl,
+            thumbnailBlob,
+            { headers: { "Content-Type": thumbnailFile.type } } // Use thumbnailFile.type as mimetype
+          );
+          console.log("Thumbnail Upload Result:", uploadResult);
+
+          if (uploadResult.status !== 200) {
+            throw new Error("Failed to upload thumbnail image");
+          }
+          thumbnailUrl = presignedData.thumbnailImage.s3Url;
+        }
+
+        if (coverFile) {
+          // Convert the File object to a Blob
+          const coverBlob = await fetch(URL.createObjectURL(coverFile)).then((r) => r.blob());
+          const uploadResult = await axios.put(
+            presignedData.coverImage.presignedUrl,
+            coverBlob,
+            { headers: { "Content-Type": coverFile.type } } // Use coverFile.type as mimetype
+          );
+          console.log("Cover Image Upload Result:", uploadResult);
+
+          if (uploadResult.status !== 200) {
+            throw new Error("Failed to upload cover image");
+          }
+          coverUrl = presignedData.coverImage.s3Url;
+        }
       }
-      
-      // Step 3: Create the blog post
+
+      // Step 3: Prepare blog data
       const blogData = {
         ...formData,
         categories: selectedCategories,
         thumbnailImage: thumbnailUrl,
         coverImage: coverUrl,
       };
-      
-      const createResponse = await apiClient.post("/blog/posts", blogData);
-      
+
+      // Step 4: Create or Update blog post
+      let createResponse;
+      if (blogToEdit) {
+        createResponse = await apiClient.put(`/blog/posts/${blogToEdit._id}`, blogData);
+        console.log("Update Blog Response:", createResponse.data);
+      } else {
+        createResponse = await apiClient.post("/blog/posts", blogData);
+        console.log("Create Blog Response:", createResponse.data);
+      }
+
       if (createResponse.data.success) {
-        toast.success("Blog created successfully");
+        toast.success(blogToEdit ? "Blog updated successfully" : "Blog created successfully");
         resetForm();
         onClose();
-        window.location.reload(); // Refresh to show the new blog
+        window.location.reload(); // Refresh to show the updated/created blog
       } else {
-        throw new Error(createResponse.data.message || "Failed to create blog");
+        throw new Error(createResponse.data.message || `Failed to ${blogToEdit ? 'update' : 'create'} blog`);
       }
     } catch (error) {
-      console.error("Error creating blog:", error);
-      toast.error(error.message || "Failed to create blog");
+      console.error(`Error ${blogToEdit ? 'updating' : 'creating'} blog:`, error);
+      toast.error(error.message || `Failed to ${blogToEdit ? 'update' : 'create'} blog`);
     } finally {
       setSubmitting(false);
     }
@@ -192,7 +220,9 @@ const BlogModal = ({ isOpen, onClose, categories }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-card rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-aqua">Create New Blog</h2>
+          <h2 className="text-xl font-bold text-aqua">
+            {blogToEdit ? "Edit Blog" : "Create New Blog"}
+          </h2>
           <button 
             onClick={() => {
               resetForm();
@@ -293,12 +323,15 @@ const BlogModal = ({ isOpen, onClose, categories }) => {
                     type="file"
                     accept="image/*"
                     onChange={handleThumbnailSelect}
-                    className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-aqua"
-                    required
+                    className="w-full px-3 py-2 bg грив-background border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-aqua"
                   />
-                  {thumbnailFile && (
+                  {thumbnailFile ? (
                     <div className="mt-2 text-sm text-green-400">
                       <FiCheck className="inline mr-1" /> {thumbnailFile.name} selected
+                    </div>
+                  ) : blogToEdit && (
+                    <div className="mt-2 text-sm text-gray-400">
+                      Current: {blogToEdit.thumbnailImage.split('/').pop()}
                     </div>
                   )}
                 </div>
@@ -326,11 +359,14 @@ const BlogModal = ({ isOpen, onClose, categories }) => {
                     accept="image/*"
                     onChange={handleCoverSelect}
                     className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-aqua"
-                    required
                   />
-                  {coverFile && (
+                  {coverFile ? (
                     <div className="mt-2 text-sm text-green-400">
                       <FiCheck className="inline mr-1" /> {coverFile.name} selected
+                    </div>
+                  ) : blogToEdit && (
+                    <div className="mt-2 text-sm text-gray-400">
+                      Current: {blogToEdit.coverImage.split('/').pop()}
                     </div>
                   )}
                 </div>
@@ -390,7 +426,8 @@ const BlogModal = ({ isOpen, onClose, categories }) => {
                 disabled={submitting}
                 className="px-4 py-2 bg-aqua text-background rounded-md hover:bg-aqua-dark"
               >
-                {submitting ? 'Creating...' : 'Create Blog'}
+                {submitting ? (blogToEdit ? 'Updating...' : 'Creating...') : 
+                 (blogToEdit ? 'Update Blog' : 'Create Blog')}
               </button>
             </div>
           </div>
@@ -757,6 +794,7 @@ const Blogs = () => {
         isOpen={modalOpen}
         onClose={handleCloseModal}
         categories={categories}
+        blogToEdit={currentBlog}
       />
 
       <ViewBlogModal
