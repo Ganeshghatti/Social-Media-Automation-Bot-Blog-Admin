@@ -46,7 +46,6 @@ function App() {
           <Route path="/authors" element={<Layout><Authors /></Layout>} />
           <Route path="/categories" element={<Layout><Categories /></Layout>} />
           <Route path="/blogs" element={<Layout><Blogs /></Layout>} />
-          <Route path="/blogs/edit/:blogId" element={<Layout><EditBlog /></Layout>} />
           
           {/* 404 route */}
           <Route path="*" element={<NotFound />} />
