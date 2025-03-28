@@ -43,11 +43,11 @@ function App() {
           
           {/* Protected Routes */}
           <Route path="/" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+          <Route path="/dashboard" element={<Layout><Blogs /></Layout>} />
           <Route path="/authors" element={<Layout><Authors /></Layout>} />
           <Route path="/categories" element={<Layout><Categories /></Layout>} />
-          <Route path="/blogs" element={<Layout><Blogs /></Layout>} />
-          <Route path="/blogs/edit/:blogId" element={<Layout><EditBlog /></Layout>} />
+          {/* <Route path="/blogs" element={<Layout><Blogs /></Layout>} /> */}
+          {/* <Route path="/blogs/edit/:blogId" element={<Layout><EditBlog /></Layout>} /> */}
           
           {/* 404 route */}
           <Route path="*" element={<NotFound />} />

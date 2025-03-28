@@ -69,19 +69,6 @@ const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
             <FiFolder className="mr-3" size={18} />
             <span>Categories</span>
           </Link>
-          
-          {/* Blogs Section */}
-          <Link 
-            to="/blogs" 
-            className={`flex items-center px-4 py-3 rounded-md transition-colors ${
-              location.pathname.startsWith('/blogs') 
-                ? 'bg-aqua bg-opacity-10 text-aqua' 
-                : 'text-text hover:bg-gray-800'
-            }`}
-          >
-            <FiFileText className="mr-3" size={18} />
-            <span>Blogs</span>
-          </Link>
         </div>
       </nav>
     </div>

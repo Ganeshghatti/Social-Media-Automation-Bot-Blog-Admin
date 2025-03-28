@@ -3,7 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import apiClient from "../services/api";
 import toast from "react-hot-toast";
-import { FiEdit, FiTrash, FiPlus, FiX, FiEye, FiImage, FiCheck } from "react-icons/fi";
+import {
+  FiEdit,
+  FiTrash,
+  FiPlus,
+  FiX,
+  FiEye,
+  FiImage,
+  FiCheck,
+} from "react-icons/fi";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import axios from "axios";
@@ -22,6 +30,8 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
 
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
 
@@ -37,8 +47,20 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
         thumbnailImageAlt: blogToEdit.thumbnailImageAlt || "",
         coverImageAlt: blogToEdit.coverImageAlt || "",
       });
-      setSelectedCategories(blogToEdit.categories?.map(cat => 
-        typeof cat === 'object' ? cat._id : cat) || []);
+      setSelectedCategories(
+        blogToEdit.categories?.map((cat) =>
+          typeof cat === "object" ? cat._id : cat
+        ) || []
+      );
+      setThumbnailPreview(
+        blogToEdit.thumbnailImageUrl || blogToEdit.thumbnailImage || null
+      );
+      setCoverPreview(
+        blogToEdit.coverImageUrl || blogToEdit.coverImage || null
+      );
+    } else {
+      setThumbnailPreview(null);
+      setCoverPreview(null);
     }
   }, [blogToEdit]);
 
@@ -54,6 +76,8 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
     });
     setThumbnailFile(null);
     setCoverFile(null);
+    setThumbnailPreview(null);
+    setCoverPreview(null);
     setSelectedCategories([]);
   };
 
@@ -68,26 +92,29 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
 
   const handleThumbnailSelect = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setThumbnailFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setThumbnailFile(file);
+      setThumbnailPreview(URL.createObjectURL(file));
     }
   };
 
   const handleCoverSelect = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setCoverFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setCoverFile(file);
+      setCoverPreview(URL.createObjectURL(file));
     }
   };
 
   const toggleCategory = (categoryId) => {
-    setSelectedCategories(prev => {
+    setSelectedCategories((prev) => {
       if (prev.includes(categoryId)) {
-        return prev.filter(id => id !== categoryId);
+        return prev.filter((id) => id !== categoryId);
       } else {
         return [...prev, categoryId];
       }
     });
   };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,9 +150,10 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
       let thumbnailUrl = blogToEdit?.thumbnailImage || "";
       let coverUrl = blogToEdit?.coverImage || "";
 
-      // Handle image uploads if changed
       if (thumbnailFile || coverFile) {
-        let presignedUrl = `/blog/presigned-url?mode=${blogToEdit ? 'edit' : 'create'}`;
+        let presignedUrl = `/blog/presigned-url?mode=${
+          blogToEdit ? "edit" : "create"
+        }`;
         if (blogToEdit) {
           presignedUrl += `&blogId=${blogToEdit._id}`;
           if (thumbnailFile && !coverFile) {
@@ -137,23 +165,24 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
           }
         }
 
-        // Step 1: Get presigned URLs
         const presignedResponse = await apiClient.get(presignedUrl);
         if (!presignedResponse.data.success) {
-          throw new Error(presignedResponse.data.message || "Failed to get upload URLs");
+          throw new Error(
+            presignedResponse.data.message || "Failed to get upload URLs"
+          );
         }
 
         const presignedData = presignedResponse.data.data;
         console.log("Presigned URL Response:", presignedResponse.data);
 
-        // Step 2: Upload images to S3 if files are selected
         if (thumbnailFile) {
-          // Convert the File object to a Blob
-          const thumbnailBlob = await fetch(URL.createObjectURL(thumbnailFile)).then((r) => r.blob());
+          const thumbnailBlob = await fetch(
+            URL.createObjectURL(thumbnailFile)
+          ).then((r) => r.blob());
           const uploadResult = await axios.put(
             presignedData.thumbnailImage.presignedUrl,
             thumbnailBlob,
-            { headers: { "Content-Type": thumbnailFile.type } } // Use thumbnailFile.type as mimetype
+            { headers: { "Content-Type": thumbnailFile.type } }
           );
           console.log("Thumbnail Upload Result:", uploadResult);
 
@@ -164,12 +193,13 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
         }
 
         if (coverFile) {
-          // Convert the File object to a Blob
-          const coverBlob = await fetch(URL.createObjectURL(coverFile)).then((r) => r.blob());
+          const coverBlob = await fetch(URL.createObjectURL(coverFile)).then(
+            (r) => r.blob()
+          );
           const uploadResult = await axios.put(
             presignedData.coverImage.presignedUrl,
             coverBlob,
-            { headers: { "Content-Type": coverFile.type } } // Use coverFile.type as mimetype
+            { headers: { "Content-Type": coverFile.type } }
           );
           console.log("Cover Image Upload Result:", uploadResult);
 
@@ -180,7 +210,6 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
         }
       }
 
-      // Step 3: Prepare blog data
       const blogData = {
         ...formData,
         categories: selectedCategories,
@@ -188,10 +217,12 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
         coverImage: coverUrl,
       };
 
-      // Step 4: Create or Update blog post
       let createResponse;
       if (blogToEdit) {
-        createResponse = await apiClient.put(`/blog/posts/${blogToEdit._id}`, blogData);
+        createResponse = await apiClient.put(
+          `/blog/posts/${blogToEdit._id}`,
+          blogData
+        );
         console.log("Update Blog Response:", createResponse.data);
       } else {
         createResponse = await apiClient.post("/blog/posts", blogData);
@@ -199,16 +230,26 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
       }
 
       if (createResponse.data.success) {
-        toast.success(blogToEdit ? "Blog updated successfully" : "Blog created successfully");
+        toast.success(
+          blogToEdit ? "Blog updated successfully" : "Blog created successfully"
+        );
         resetForm();
         onClose();
-        window.location.reload(); // Refresh to show the updated/created blog
+        window.location.reload();
       } else {
-        throw new Error(createResponse.data.message || `Failed to ${blogToEdit ? 'update' : 'create'} blog`);
+        throw new Error(
+          createResponse.data.message ||
+            `Failed to ${blogToEdit ? "update" : "create"} blog`
+        );
       }
     } catch (error) {
-      console.error(`Error ${blogToEdit ? 'updating' : 'creating'} blog:`, error);
-      toast.error(error.message || `Failed to ${blogToEdit ? 'update' : 'create'} blog`);
+      console.error(
+        `Error ${blogToEdit ? "updating" : "creating"} blog:`,
+        error
+      );
+      toast.error(
+        error.message || `Failed to ${blogToEdit ? "update" : "create"} blog`
+      );
     } finally {
       setSubmitting(false);
     }
@@ -223,7 +264,7 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
           <h2 className="text-xl font-bold text-aqua">
             {blogToEdit ? "Edit Blog" : "Create New Blog"}
           </h2>
-          <button 
+          <button
             onClick={() => {
               resetForm();
               onClose();
@@ -233,13 +274,16 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
             <FiX size={24} />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="title" className="block text-text font-medium mb-1">
+                  <label
+                    htmlFor="title"
+                    className="block text-text font-medium mb-1"
+                  >
                     Title *
                   </label>
                   <input
@@ -252,9 +296,12 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                     required
                   />
                 </div>
-                
+
                 <div>
-                  <label htmlFor="description" className="block text-text font-medium mb-1">
+                  <label
+                    htmlFor="description"
+                    className="block text-text font-medium mb-1"
+                  >
                     Description *
                   </label>
                   <textarea
@@ -267,9 +314,12 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                     required
                   ></textarea>
                 </div>
-                
+
                 <div>
-                  <label htmlFor="status" className="block text-text font-medium mb-1">
+                  <label
+                    htmlFor="status"
+                    className="block text-text font-medium mb-1"
+                  >
                     Status
                   </label>
                   <select
@@ -284,21 +334,21 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                   </select>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-text font-medium mb-1">
                     Categories
                   </label>
                   <div className="flex flex-wrap gap-2 p-3 bg-background border border-gray-700 rounded-md min-h-[100px]">
-                    {categories.map(category => (
-                      <div 
+                    {categories.map((category) => (
+                      <div
                         key={category._id}
                         onClick={() => toggleCategory(category._id)}
                         className={`px-3 py-1 rounded-full cursor-pointer flex items-center ${
-                          selectedCategories.includes(category._id) 
-                            ? 'bg-aqua text-background' 
-                            : 'bg-gray-700 text-text'
+                          selectedCategories.includes(category._id)
+                            ? "bg-aqua text-background"
+                            : "bg-gray-700 text-text"
                         }`}
                       >
                         {category.name}
@@ -310,11 +360,13 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                       </div>
                     ))}
                     {categories.length === 0 && (
-                      <div className="text-gray-400">No categories available</div>
+                      <div className="text-gray-400">
+                        No categories available
+                      </div>
                     )}
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-text font-medium mb-1">
                     Thumbnail Image *
@@ -323,21 +375,36 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                     type="file"
                     accept="image/*"
                     onChange={handleThumbnailSelect}
-                    className="w-full px-3 py-2 bg грив-background border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-aqua"
+                    className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-aqua"
                   />
-                  {thumbnailFile ? (
-                    <div className="mt-2 text-sm text-green-400">
-                      <FiCheck className="inline mr-1" /> {thumbnailFile.name} selected
-                    </div>
-                  ) : blogToEdit && (
-                    <div className="mt-2 text-sm text-gray-400">
-                      Current: {blogToEdit.thumbnailImage.split('/').pop()}
+                  {thumbnailPreview && (
+                    <div className="mt-2">
+                      <img
+                        src={thumbnailPreview}
+                        alt="Thumbnail Preview"
+                        className="w-32 h-32 object-cover rounded-md"
+                      />
                     </div>
                   )}
+                  {thumbnailFile ? (
+                    <div className="mt-2 text-sm text-green-400">
+                      <FiCheck className="inline mr-1" /> {thumbnailFile.name}{" "}
+                      selected
+                    </div>
+                  ) : (
+                    blogToEdit && (
+                      <div className="mt-2 text-sm text-gray-400">
+                        Current: {blogToEdit.thumbnailImage.split("/").pop()}
+                      </div>
+                    )
+                  )}
                 </div>
-                
+
                 <div>
-                  <label htmlFor="thumbnailImageAlt" className="block text-text font-medium mb-1">
+                  <label
+                    htmlFor="thumbnailImageAlt"
+                    className="block text-text font-medium mb-1"
+                  >
                     Thumbnail Alt Text
                   </label>
                   <input
@@ -349,7 +416,7 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                     className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-aqua"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-text font-medium mb-1">
                     Cover Image *
@@ -360,19 +427,34 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                     onChange={handleCoverSelect}
                     className="w-full px-3 py-2 bg-background border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-aqua"
                   />
-                  {coverFile ? (
-                    <div className="mt-2 text-sm text-green-400">
-                      <FiCheck className="inline mr-1" /> {coverFile.name} selected
-                    </div>
-                  ) : blogToEdit && (
-                    <div className="mt-2 text-sm text-gray-400">
-                      Current: {blogToEdit.coverImage.split('/').pop()}
+                  {coverPreview && (
+                    <div className="mt-2">
+                      <img
+                        src={coverPreview}
+                        alt="Cover Preview"
+                        className="w-32 h-32 object-cover rounded-md"
+                      />
                     </div>
                   )}
+                  {coverFile ? (
+                    <div className="mt-2 text-sm text-green-400">
+                      <FiCheck className="inline mr-1" /> {coverFile.name}{" "}
+                      selected
+                    </div>
+                  ) : (
+                    blogToEdit && (
+                      <div className="mt-2 text-sm text-gray-400">
+                        Current: {blogToEdit.coverImage.split("/").pop()}
+                      </div>
+                    )
+                  )}
                 </div>
-                
+
                 <div>
-                  <label htmlFor="coverImageAlt" className="block text-text font-medium mb-1">
+                  <label
+                    htmlFor="coverImageAlt"
+                    className="block text-text font-medium mb-1"
+                  >
                     Cover Alt Text
                   </label>
                   <input
@@ -386,7 +468,7 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                 </div>
               </div>
             </div>
-            
+
             <div>
               <label className="block text-text font-medium mb-1">
                 Content *
@@ -398,18 +480,18 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                 className="bg-background text-text"
                 modules={{
                   toolbar: [
-                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'indent': '-1'}, { 'indent': '+1' }],
-                    [{ 'align': [] }],
-                    ['link', 'image', 'code-block'],
-                    ['clean']
-                  ]
+                    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                    ["bold", "italic", "underline", "strike"],
+                    [{ list: "ordered" }, { list: "bullet" }],
+                    [{ indent: "-1" }, { indent: "+1" }],
+                    [{ align: [] }],
+                    ["link", "image", "code-block"],
+                    ["clean"],
+                  ],
                 }}
               />
             </div>
-            
+
             <div className="flex justify-end">
               <button
                 type="button"
@@ -426,8 +508,13 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
                 disabled={submitting}
                 className="px-4 py-2 bg-aqua text-background rounded-md hover:bg-aqua-dark"
               >
-                {submitting ? (blogToEdit ? 'Updating...' : 'Creating...') : 
-                 (blogToEdit ? 'Update Blog' : 'Create Blog')}
+                {submitting
+                  ? blogToEdit
+                    ? "Updating..."
+                    : "Creating..."
+                  : blogToEdit
+                  ? "Update Blog"
+                  : "Create Blog"}
               </button>
             </div>
           </div>
@@ -452,10 +539,10 @@ const ViewBlogModal = ({ isOpen, onClose, blog }) => {
         </div>
 
         <div className="space-y-4">
-          {blog.coverImage && (
+          {blog.coverImageUrl && (
             <div className="mb-4">
               <img
-                src={blog.coverImage}
+                src={blog.coverImageUrl}
                 alt={blog.coverImageAlt || blog.title}
                 className="w-full h-64 object-cover rounded-lg"
               />
@@ -709,19 +796,34 @@ const Blogs = () => {
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-800">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                    >
                       Title
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                    >
                       Status
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                    >
                       Categories
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                    >
                       Created
                     </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider"
+                    >
                       Actions
                     </th>
                   </tr>
@@ -730,25 +832,31 @@ const Blogs = () => {
                   {blogs.map((blog) => (
                     <tr key={blog._id}>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-text">{blog.title}</div>
+                        <div className="text-sm font-medium text-text">
+                          {blog.title}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          blog.status === 'public' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            blog.status === "public"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
                           {blog.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1">
                           {blog.categories?.map((category, idx) => (
-                            <span 
-                              key={idx} 
+                            <span
+                              key={idx}
                               className="px-2 py-1 text-xs bg-gray-700 rounded-full"
                             >
-                              {typeof category === 'object' ? category.name : category}
+                              {typeof category === "object"
+                                ? category.name
+                                : category}
                             </span>
                           ))}
                         </div>
@@ -757,10 +865,19 @@ const Blogs = () => {
                         {new Date(blog.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        {(isAdmin || blog.authors.some(author => 
-                          (typeof author === 'object' && author._id === user?._id) || 
-                          author === user?._id
-                        )) && (
+                        <button
+                          onClick={() => handleOpenViewModal(blog._id)}
+                          className="text-blue-400 hover:text-blue-300"
+                        >
+                          <FiEye className="inline" /> View
+                        </button>
+                        {(isAdmin ||
+                          blog.authors.some(
+                            (author) =>
+                              (typeof author === "object" &&
+                                author._id === user?._id) ||
+                              author === user?._id
+                          )) && (
                           <>
                             <button
                               onClick={() => handleOpenModal(blog)}
@@ -768,7 +885,7 @@ const Blogs = () => {
                             >
                               <FiEdit className="inline" /> Edit
                             </button>
-                            
+
                             {isAdmin && (
                               <button
                                 onClick={() => handleDelete(blog._id)}
