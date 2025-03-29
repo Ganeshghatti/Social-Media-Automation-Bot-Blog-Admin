@@ -40,13 +40,9 @@ function App() {
         />
         <Routes>
           <Route path="/" element={<Login />} />
-          
-          {/* Protected Routes */}
-          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+          <Route path="/dashboard" element={<Layout><Blogs /></Layout>} />
           <Route path="/authors" element={<Layout><Authors /></Layout>} />
           <Route path="/categories" element={<Layout><Categories /></Layout>} />
-          <Route path="/blogs" element={<Layout><Blogs /></Layout>} />
-          
           {/* 404 route */}
           <Route path="*" element={<NotFound />} />
         </Routes>

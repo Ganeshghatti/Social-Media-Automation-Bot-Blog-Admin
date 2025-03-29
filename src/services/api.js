@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://api.bot.thesquirrel.site';
+const API_URL = 'https://api.bot.thesquirrel.tech';
 
 const apiClient = axios.create({
   baseURL: API_URL,
