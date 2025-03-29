@@ -8,7 +8,6 @@ import Categories from './pages/Categories';
 import Blogs from './pages/Blogs';
 import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
-import EditBlog from './pages/EditBlog';
 import './index.css';
 
 function App() {
