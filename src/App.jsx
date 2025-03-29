@@ -39,9 +39,6 @@ function App() {
           }}
         />
         <Routes>
-          <Route path="/login" element={<Login />} />
-          
-          {/* Protected Routes */}
           <Route path="/" element={<Login />} />
           <Route path="/dashboard" element={<Layout><Blogs /></Layout>} />
           <Route path="/authors" element={<Layout><Authors /></Layout>} />
