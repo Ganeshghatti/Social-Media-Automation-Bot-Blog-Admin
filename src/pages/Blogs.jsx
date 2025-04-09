@@ -220,7 +220,7 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
       let createResponse;
       if (blogToEdit) {
         createResponse = await apiClient.put(
-          `/blog/posts/${blogToEdit._id}`,
+          `/blog/posts/${blogToEdit.slug}`,
           blogData
         );
         console.log("Update Blog Response:", createResponse.data);
@@ -708,7 +708,7 @@ const Blogs = () => {
       if (isEditing) {
         // Update existing blog
         const response = await apiClient.put(
-          `/blog/posts/${currentBlog._id}`,
+          `/blog/posts/${currentBlog.slug}`,
           formData
         );
         if (response.data.success) {
@@ -866,7 +866,7 @@ const Blogs = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         <button
-                          onClick={() => handleOpenViewModal(blog._id)}
+                          onClick={() => handleOpenViewModal(blog.slug)}
                           className="text-blue-400 hover:text-blue-300"
                         >
                           <FiEye className="inline" /> View
@@ -888,7 +888,7 @@ const Blogs = () => {
 
                             {isAdmin && (
                               <button
-                                onClick={() => handleDelete(blog._id)}
+                                onClick={() => handleDelete(blog.slug)}
                                 className="text-pink hover:text-pink-dark"
                               >
                                 <FiTrash className="inline" /> Delete
