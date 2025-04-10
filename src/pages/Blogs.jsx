@@ -157,9 +157,9 @@ const BlogModal = ({ isOpen, onClose, categories, blogToEdit = null }) => {
         if (blogToEdit) {
           presignedUrl += `&blogId=${blogToEdit._id}`;
           if (thumbnailFile && !coverFile) {
-            presignedUrl += "&imageType=Thumbnail";
+            presignedUrl += "&imageType=thumbnailImage";
           } else if (!thumbnailFile && coverFile) {
-            presignedUrl += "&imageType=CoverImage";
+            presignedUrl += "&imageType=coverImage";
           } else if (thumbnailFile && coverFile) {
             presignedUrl += "&imageType=both";
           }
